@@ -11,6 +11,7 @@ const VideoWindow = (props) =>
 	const {
 		advancedMode,
 		consumer,
+		aspectRatio,
 		toggleConsumerWindow
 	} = props;
 
@@ -23,18 +24,29 @@ const VideoWindow = (props) =>
 		!consumer.remotelyPaused
 	);
 
-	let consumerProfile;
-
-	if (consumer)
-		consumerProfile = consumer.profile;
-
 	return (
-		<NewWindow onUnload={toggleConsumerWindow}>
+		<NewWindow onUnload={toggleConsumerWindow} aspectRatio={aspectRatio}>
 			<FullView
 				advancedMode={advancedMode}
-				videoTrack={consumer ? consumer.track : null}
+				consumerSpatialLayers={consumer ? consumer.spatialLayers : null}
+				consumerTemporalLayers={consumer ? consumer.temporalLayers : null}
+				consumerCurrentSpatialLayer={
+					consumer ? consumer.currentSpatialLayer : null
+				}
+				consumerCurrentTemporalLayer={
+					consumer ? consumer.currentTemporalLayer : null
+				}
+				consumerPreferredSpatialLayer={
+					consumer ? consumer.preferredSpatialLayer : null
+				}
+				consumerPreferredTemporalLayer={
+					consumer ? consumer.preferredTemporalLayer : null
+				}
+				videoMultiLayer={consumer && consumer.type !== 'simple'}
+				videoTrack={consumer && consumer.track}
 				videoVisible={consumerVisible}
-				videoProfile={consumerProfile}
+				videoCodec={consumer && consumer.codec}
+				videoScore={consumer ? consumer.score : null}
 			/>
 		</NewWindow>
 	);
@@ -44,13 +56,15 @@ VideoWindow.propTypes =
 {
 	advancedMode         : PropTypes.bool,
 	consumer             : appPropTypes.Consumer,
+	aspectRatio          : PropTypes.number.isRequired,
 	toggleConsumerWindow : PropTypes.func.isRequired
 };
 
 const mapStateToProps = (state) =>
 {
 	return {
-		consumer : state.consumers[state.room.windowConsumer]
+		consumer    : state.consumers[state.room.windowConsumer],
+		aspectRatio : state.settings.aspectRatio
 	};
 };
 
@@ -73,7 +87,8 @@ const VideoWindowContainer = connect(
 		{
 			return (
 				prev.consumers[prev.room.windowConsumer] ===
-					next.consumers[next.room.windowConsumer]
+					next.consumers[next.room.windowConsumer] &&
+				prev.settings.aspectRatio === next.settings.aspectRatio
 			);
 		}
 	}

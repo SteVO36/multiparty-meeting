@@ -2,7 +2,7 @@ import bowser from 'bowser';
 
 window.BB = bowser;
 
-export default function()
+export default function deviceInfo()
 {
 	const ua = navigator.userAgent;
 	const browser = bowser.getParser(ua);
@@ -24,8 +24,10 @@ export default function()
 
 	return {
 		flag,
-		name    : browser.getBrowserName(),
-		version : browser.getBrowserVersion(),
-		bowser  : browser
+		os       : browser.getOSName(true), // ios, android, linux...
+		platform : browser.getPlatformType(true), // mobile, desktop, tablet
+		name     : browser.getBrowserName(true),
+		version  : browser.getBrowserVersion(),
+		bowser   : browser
 	};
 }

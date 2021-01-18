@@ -10,11 +10,12 @@ import { withStyles } from '@material-ui/core/styles';
 import Peer from '../Containers/Peer';
 import Me from '../Containers/Me';
 
-const RATIO = 1.334;
-const PADDING_V = 50;
-const PADDING_H = 0;
+const PADDING_V = 64;
+const PADDING_H = 50;
 
-const styles = () =>
+const FILL_RATE = 0.95;
+
+const styles = (theme) =>
 	({
 		root :
 		{
@@ -23,6 +24,7 @@ const styles = () =>
 			display        : 'flex',
 			flexDirection  : 'row',
 			flexWrap       : 'wrap',
+			overflow       : 'hidden',
 			justifyContent : 'center',
 			alignItems     : 'center',
 			alignContent   : 'center'
@@ -34,8 +36,16 @@ const styles = () =>
 		},
 		showingToolBar :
 		{
-			paddingTop : 60,
+			paddingTop : PADDING_V,
 			transition : 'padding .5s'
+		},
+		buttonControlBar :
+		{
+			paddingLeft                    : PADDING_H,
+			[theme.breakpoints.down('sm')] :
+			{
+				paddingLeft : 0
+			}
 		}
 	});
 
@@ -54,45 +64,60 @@ class Democratic extends React.PureComponent
 
 	updateDimensions = () =>
 	{
-		if (!this.peersRef.current)
-		{
+		const {
+			boxes,
+			aspectRatio,
+			buttonControlBar,
+			permanentTopBar,
+			toolbarsVisible
+		} = this.props;
+
+		const {
+			current
+		} = this.peersRef;
+
+		if (!current)
 			return;
-		}
 
-		const n = this.props.boxes;
-
-		if (n === 0)
-		{
+		if (boxes === 0)
 			return;
-		}
 
-		const width = this.peersRef.current.clientWidth - PADDING_H;
-		const height = this.peersRef.current.clientHeight -
-			(this.props.toolbarsVisible || this.props.permanentTopBar ? PADDING_V : PADDING_H);
+		const n = boxes;
+
+		const width =
+			current.clientWidth - (buttonControlBar ? PADDING_H : 0);
+		const height =
+			current.clientHeight - (toolbarsVisible || permanentTopBar ? PADDING_V : 0);
 
 		let x, y, space;
 
-		for (let rows = 1; rows < 100; rows = rows + 1)
+		for (let rows = 1; rows <= boxes; rows = rows + 1)
 		{
 			x = width / Math.ceil(n / rows);
-			y = x / RATIO;
+			y = x / aspectRatio;
+
 			if (height < (y * rows))
 			{
 				y = height / rows;
-				x = RATIO * y;
+				x = aspectRatio * y;
+
 				break;
 			}
+
 			space = height - (y * (rows));
+
 			if (space < y)
-			{
 				break;
-			}
 		}
-		if (Math.ceil(this.state.peerWidth) !== Math.ceil(0.94 * x))
+
+		if (
+			Math.ceil(this.state.peerWidth) !== Math.ceil(FILL_RATE * x) ||
+			Math.ceil(this.state.peerHeight) !== Math.ceil(FILL_RATE * y)
+		)
 		{
 			this.setState({
-				peerWidth  : 0.94 * x,
-				peerHeight : 0.94 * y
+				peerWidth  : FILL_RATE * x,
+				peerHeight : FILL_RATE * y
 			});
 		}
 	};
@@ -130,6 +155,8 @@ class Democratic extends React.PureComponent
 			spotlightsPeers,
 			toolbarsVisible,
 			permanentTopBar,
+			buttonControlBar,
+			hideSelfView,
 			classes
 		} = this.props;
 
@@ -143,15 +170,19 @@ class Democratic extends React.PureComponent
 			<div
 				className={classnames(
 					classes.root,
-					toolbarsVisible || permanentTopBar ? classes.showingToolBar : classes.hiddenToolBar
+					toolbarsVisible || permanentTopBar ?
+						classes.showingToolBar : classes.hiddenToolBar,
+					buttonControlBar ? classes.buttonControlBar : null
 				)}
 				ref={this.peersRef}
 			>
+				{ !hideSelfView &&
 				<Me
 					advancedMode={advancedMode}
 					spacing={6}
 					style={style}
 				/>
+				}
 				{ spotlightsPeers.map((peer) =>
 				{
 					return (
@@ -175,17 +206,25 @@ Democratic.propTypes =
 	boxes            : PropTypes.number,
 	spotlightsPeers  : PropTypes.array.isRequired,
 	toolbarsVisible  : PropTypes.bool.isRequired,
-	permanentTopBar     : PropTypes.bool,
+	hideSelfView     : PropTypes.bool.isRequired,
+	permanentTopBar  : PropTypes.bool.isRequired,
+	buttonControlBar : PropTypes.bool.isRequired,
+	toolAreaOpen     : PropTypes.bool.isRequired,
+	aspectRatio      : PropTypes.number.isRequired,
 	classes          : PropTypes.object.isRequired
 };
 
 const mapStateToProps = (state) =>
 {
 	return {
-		boxes           : videoBoxesSelector(state),
-		spotlightsPeers : spotlightPeersSelector(state),
-		toolbarsVisible : state.room.toolbarsVisible,
-		permanentTopBar    : state.settings.permanentTopBar
+		boxes            : videoBoxesSelector(state),
+		spotlightsPeers  : spotlightPeersSelector(state),
+		toolbarsVisible  : state.room.toolbarsVisible,
+		hideSelfView     : state.room.hideSelfView,
+		permanentTopBar  : state.settings.permanentTopBar,
+		buttonControlBar : state.settings.buttonControlBar,
+		toolAreaOpen     : state.toolarea.toolAreaOpen,
+		aspectRatio      : state.settings.aspectRatio
 	};
 };
 
@@ -202,8 +241,12 @@ export default connect(
 				prev.consumers === next.consumers &&
 				prev.room.spotlights === next.room.spotlights &&
 				prev.room.toolbarsVisible === next.room.toolbarsVisible &&
-				prev.settings.permanentTopBar === next.settings.permanentTopBar
+				prev.room.hideSelfView === next.room.hideSelfView &&
+				prev.settings.permanentTopBar === next.settings.permanentTopBar &&
+				prev.settings.buttonControlBar === next.settings.buttonControlBar &&
+				prev.settings.aspectRatio === next.settings.aspectRatio &&
+				prev.toolarea.toolAreaOpen === next.toolarea.toolAreaOpen
 			);
 		}
 	}
-)(withStyles(styles)(Democratic));
+)(withStyles(styles, { withTheme: true })(Democratic));
